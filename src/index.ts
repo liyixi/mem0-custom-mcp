@@ -10,6 +10,7 @@ import { z } from "zod";
 
 // Environment configuration
 const MEM0_API_URL = process.env.MEM0_API_URL || "http://localhost:8888";
+const MEM0_API_PREFIX = process.env.MEM0_API_PREFIX || "";
 const DEFAULT_USER_ID = process.env.DEFAULT_USER_ID || "default";
 
 // Zod schemas for input validation
@@ -40,7 +41,7 @@ async function callMem0API(
   method: string = "GET",
   body?: any
 ): Promise<any> {
-  const url = `${MEM0_API_URL}${endpoint}`;
+  const url = `${MEM0_API_URL}${MEM0_API_PREFIX}${endpoint}`;
 
   const options: RequestInit = {
     method,
@@ -180,7 +181,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       case "add_memory": {
         const { content, user_id, metadata } = AddMemorySchema.parse(args);
-        const result = await callMem0API("/v1/memories/", "POST", {
+        const result = await callMem0API("/memories", "POST", {
           messages: [{ role: "user", content }],
           user_id: user_id || DEFAULT_USER_ID,
           metadata,
@@ -197,7 +198,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case "search_memories": {
         const { query, user_id, limit } = SearchMemoriesSchema.parse(args);
-        const result = await callMem0API("/v1/memories/search/", "POST", {
+        const result = await callMem0API("/search", "POST", {
           query,
           user_id: user_id || DEFAULT_USER_ID,
           limit: limit || 10,
@@ -216,8 +217,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { user_id, limit } = GetMemoriesSchema.parse(args);
         const userId = user_id || DEFAULT_USER_ID;
         const limitParam = limit || 100;
-        // Note: Mem0 API uses user_id as path parameter, limit is handled by API
-        const result = await callMem0API(`/v1/memories/${userId}`);
+        const result = await callMem0API(`/memories?user_id=${encodeURIComponent(userId)}`);
         // Filter by limit on our side since API doesn't support limit parameter
         const memories = Array.isArray(result) ? result.slice(0, limitParam) : result;
         return {
@@ -232,7 +232,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case "delete_memory": {
         const { memory_id } = DeleteMemorySchema.parse(args);
-        const result = await callMem0API(`/v1/memories/${memory_id}`, "DELETE");
+        const result = await callMem0API(`/memories/${memory_id}`, "DELETE");
         return {
           content: [
             {
@@ -262,6 +262,7 @@ async function main() {
   // Log to stderr so it doesn't interfere with stdio protocol
   console.error("Mem0 Custom MCP Server running");
   console.error(`API URL: ${MEM0_API_URL}`);
+  console.error(`API Prefix: ${MEM0_API_PREFIX || "(none)"}`);
   console.error(`Default User ID: ${DEFAULT_USER_ID}`);
 }
 
