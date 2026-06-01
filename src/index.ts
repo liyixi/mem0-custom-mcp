@@ -11,6 +11,8 @@ import { z } from "zod";
 // Environment configuration
 const MEM0_API_URL = process.env.MEM0_API_URL || "http://localhost:8888";
 const MEM0_API_PREFIX = process.env.MEM0_API_PREFIX || "";
+const MEM0_API_KEY = process.env.MEM0_API_KEY || "";
+const MEM0_API_KEY_HEADER = process.env.MEM0_API_KEY_HEADER || "X-API-Key";
 const DEFAULT_USER_ID = process.env.DEFAULT_USER_ID || "default";
 
 // Zod schemas for input validation
@@ -43,11 +45,17 @@ async function callMem0API(
 ): Promise<any> {
   const url = `${MEM0_API_URL}${MEM0_API_PREFIX}${endpoint}`;
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (MEM0_API_KEY) {
+    headers[MEM0_API_KEY_HEADER] = MEM0_API_KEY;
+  }
+
   const options: RequestInit = {
     method,
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
   };
 
   if (body) {
@@ -263,6 +271,7 @@ async function main() {
   console.error("Mem0 Custom MCP Server running");
   console.error(`API URL: ${MEM0_API_URL}`);
   console.error(`API Prefix: ${MEM0_API_PREFIX || "(none)"}`);
+  console.error(`API Key: ${MEM0_API_KEY ? `configured (header: ${MEM0_API_KEY_HEADER})` : "(none)"}`);
   console.error(`Default User ID: ${DEFAULT_USER_ID}`);
 }
 
