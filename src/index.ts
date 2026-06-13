@@ -226,13 +226,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const userId = user_id || DEFAULT_USER_ID;
         const limitParam = limit || 100;
         const result = await callMem0API(`/memories?user_id=${encodeURIComponent(userId)}`);
-        // Filter by limit on our side since API doesn't support limit parameter
-        const memories = Array.isArray(result) ? result.slice(0, limitParam) : result;
+        // Extract memories array from response — API may return a raw array or
+        // an object wrapping the list (e.g. { results: [...], memories: [...] })
+        let rawList: any[] = [];
+        if (Array.isArray(result)) {
+          rawList = result;
+        } else if (result && typeof result === "object") {
+          rawList = result.memories || result.results || result.data || result.items || [];
+          if (!Array.isArray(rawList)) rawList = [];
+        }
+        const memories = rawList.slice(0, limitParam);
         return {
           content: [
             {
               type: "text",
-              text: `Retrieved ${Array.isArray(memories) ? memories.length : 0} memories:\n${JSON.stringify(memories, null, 2)}`,
+              text: `Retrieved ${memories.length} memories:\n${JSON.stringify(memories, null, 2)}`,
             },
           ],
         };
